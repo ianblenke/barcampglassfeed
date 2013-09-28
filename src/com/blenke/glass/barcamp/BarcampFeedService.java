@@ -209,6 +209,7 @@ public class BarcampFeedService extends Service{
 		try{
 			SyndFeedInput input = new SyndFeedInput();
 			SyndFeed feed = input.build(new XmlReader(new URL(feedUrl)));
+            Log.v(TAG, "Querying Feed " + feedUrl);
 			Log.v(TAG, "Feed contains " + feed.getEntries().size() + " items. Last Tweet link = " + lastPostedTweetLink);
 
             //This list will hold all of the IDs in the RSS stream, which we will then iterate to deliver. We have to do two iterations to make
@@ -216,12 +217,6 @@ public class BarcampFeedService extends Service{
             ArrayList<Tweet> tweets = new ArrayList<Tweet>();
             List entries = feed.getEntries();
             Iterator iteratorEntries = entries.iterator();
-            while (iteratorEntries.hasNext()) {
-                SyndEntry entry = (SyndEntry)iteratorEntries.next();
-                String title = entry.getTitle(); //this will be the tweet
-                Log.v(TAG, "Tweet: " + title);
-            }
-
             while (iteratorEntries.hasNext()) {
                 SyndEntry entry = (SyndEntry)iteratorEntries.next();
                 String title = entry.getTitle(); //this will be the tweet
