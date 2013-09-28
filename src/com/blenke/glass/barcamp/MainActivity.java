@@ -1,5 +1,5 @@
 /*
-    Youtube Feed - YouTube Atom Feed for Google Glass
+    Barcamp Feed - BarCamp Atom Feed for Google Glass
     Copyright (C) 2013 James Betker
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.appliedanalog.glass.youtube;
+package com.blenke.glass.barcamp;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -84,13 +84,13 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	YoutubeFeedService.ServiceBinder servBinder;
+	BarcampFeedService.ServiceBinder servBinder;
 	boolean bound = false;
 	ServiceConnection mConnection = new ServiceConnection(){
 		@Override
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			Log.v(TAG, "ServiceConnected");
-			servBinder = (YoutubeFeedService.ServiceBinder)service;
+			servBinder = (BarcampFeedService.ServiceBinder)service;
 			bound = true;
 			updateTextFields();
 		}
@@ -105,8 +105,8 @@ public class MainActivity extends Activity {
 	@Override
 	public void onStart(){
 		super.onStart();
-		startService(new Intent(this, YoutubeFeedService.class));
-		Intent sIntent = new Intent(this, YoutubeFeedService.class);
+		startService(new Intent(this, BarcampFeedService.class));
+		Intent sIntent = new Intent(this, BarcampFeedService.class);
 		bindService(sIntent, mConnection, Context.BIND_AUTO_CREATE);
 	}
 

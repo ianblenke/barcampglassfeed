@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/cEnableUpdates"
         android:layout_alignParentTop="true"
-        android:text="YouTube Feed"
+        android:text="BarCamp Feed"
         android:textSize="30dp" />
 
 </RelativeLayout>

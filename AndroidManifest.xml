@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.appliedanalog.glass.youtube"
+    package="com.blenke.glass.barcamp"
     android:versionCode="1"
     android:versionName="1.0" >
     
@@ -17,11 +17,11 @@
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
-        android:label="YouTube Feeds"
+        android:label="BarCamp Feeds"
         android:theme="@style/AppTheme" >
         <activity
             android:name=".MainActivity"
-            android:label="YouTube Feeds"
+            android:label="BarCamp Feeds"
             android:screenOrientation="landscape" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -29,7 +29,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".YoutubeFeedService" />
+        <service android:name=".BarcampFeedService" />
         <receiver android:name=".ServiceAutoStarter">  
 	    <intent-filter>  
 	        <action android:name="android.intent.action.BOOT_COMPLETED" />  

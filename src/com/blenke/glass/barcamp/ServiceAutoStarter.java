@@ -1,5 +1,5 @@
 /*
-    Youtube Feed - YouTube Atom Feed for Google Glass
+    Barcamp Feed - BarCamp Atom Feed for Google Glass
     Copyright (C) 2013 James Betker
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
- package com.appliedanalog.glass.youtube;
+ package com.blenke.glass.barcamp;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -25,7 +25,7 @@ import android.content.Intent;
 public class ServiceAutoStarter extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        Intent startServiceIntent = new Intent(context, YoutubeFeedService.class);
+        Intent startServiceIntent = new Intent(context, BarcampFeedService.class);
         context.startService(startServiceIntent);
     }
 }

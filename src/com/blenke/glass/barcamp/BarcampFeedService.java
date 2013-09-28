@@ -1,5 +1,5 @@
 /*
-    Youtube Feed - YouTube Atom Feed for Google Glass
+    Barcamp Feed - BarCamp Atom Feed for Google Glass
     Copyright (C) 2013 James Betker
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.appliedanalog.glass.youtube;
+package com.blenke.glass.barcamp;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -58,20 +58,20 @@ import com.sun.syndication.io.XmlReader;
  * @author betker
  *
  */
-public class YoutubeFeedService extends Service{
-	static final String TAG = "YoutubeFeedService";
+public class BarcampFeedService extends Service{
+	static final String TAG = "BarcampFeedService";
 	
 	//This is just constant because I have no good way of making it configurable in glass.
-	final String CONFIGURATION_FILE = "/sdcard/.youtubefeedconfig";
+	final String CONFIGURATION_FILE = "/sdcard/.barcampfeedconfig";
 	
 	//Shared pref constants
-	final String LAST_VIDEO_ID = "LastVideoFed";
+	final String LAST_TWEET_LINK = "LastTweetFed";
 	final String SERVICE_ENABLED = "ServiceEnabled";
 	
-	YoutubeFeedService me;
+	BarcampFeedService me;
 	FeedParser feedParser; //see below for def.
-	String feedUrl = "http://gdata.youtube.com/feeds/api/standardfeeds/top_rated";
-	int updateInterval = 10 * 60 * 1000; //every 10 minutes
+	String feedUrl = "https://script.google.com/macros/s/AKfycbzr4FC377qWZIE5fBUd_nLTudGkXS_4nrHY7SLMRjfxbRk9LbXE/exec?action=search&q=%23BCTPA";
+	int updateInterval = 1 * 60 * 1000; //every minute
     
 	//States
     boolean enabled = false;
@@ -95,14 +95,14 @@ public class YoutubeFeedService extends Service{
 			String line = "";
 			while((line = reader.readLine()) != null){
 				if(line.startsWith("#")) continue; //its a comment
-				if(line.startsWith("youtubeFeed=")){
-					feedUrl = line.replace("youtubeFeed=", "");
+				if(line.startsWith("barcampFeed=")){
+					feedUrl = line.replace("barcampFeed=", "");
 				}
 				if(line.startsWith("queryInterval=")){
 					updateInterval = Integer.parseInt(line.replace("queryInterval=", "")) * 60 * 1000;
 				}
 			}
-			Log.v(TAG, "Successfully parsed configuration file. youtubeFeed='" + feedUrl + "', queryInterval='" + updateInterval + "'");
+			Log.v(TAG, "Successfully parsed configuration file. barcampFeed='" + feedUrl + "', queryInterval='" + updateInterval + "'");
 			reader.close();
 		}catch(Exception e){
 			Log.v(TAG, "Error loading configuration file: " + e.getMessage());
@@ -153,7 +153,7 @@ public class YoutubeFeedService extends Service{
 	 * Starts up the sensors/bluetooth connection and begins pushing data to the timeline.
 	 */
 	void startFeed(){
-		Log.v(TAG, "STARTING YOUTUBE FEED SERVICE");
+		Log.v(TAG, "STARTING BARCAMP FEED SERVICE");
 		if(!feedParser.running) (new Thread(feedParser)).start();
 		enabled = true;
 		//Commit to prefs.
@@ -164,7 +164,7 @@ public class YoutubeFeedService extends Service{
 	 * Shuts down sensors/bluetooth.
 	 */
 	void stopFeed(){
-		Log.v(TAG, "STOPPING YOUTUBE FEED SERVICE");
+		Log.v(TAG, "STOPPING BARCAMP FEED SERVICE");
 		if(feedParser.running) feedParser.stop();
 		enabled = false;
 		saveEnableState();
@@ -193,86 +193,57 @@ public class YoutubeFeedService extends Service{
 		}
 	}
 
-	//structure for holding title and id
-	class VideoInfo{
-		String id, title, duration;
-		public VideoInfo(String i, String tit, String dur){
-			id = i; title = tit; duration = dur;
+	//structure for holding Tweet
+	class Tweet{
+		String link, title;
+        public Tweet(String l, String tit){
+			link = l; title = tit;
 		}
-	}
-	
-	String fetchVideoDurationFromContents(List contents){
-		//fetch the video duration from the content if we can find it
-		final String TIME_DENOTE = "Time:</span>";
-		Iterator contiter = contents.iterator();
-		while(contiter.hasNext()){
-			SyndContent content = (SyndContent)contiter.next();
-			if(content.getValue().contains(TIME_DENOTE)){
-				//This is the one we *probably* want to parse.
-				try{
-					String duration = content.getValue().substring(content.getValue().indexOf(TIME_DENOTE) + TIME_DENOTE.length());
-					//now we are left with something like this: `<span style="color: #000000; font-size: 11px; font-weight: bold;">39:52</span></td> ...{crud}`
-					//cut off the last part first.
-					if(duration.contains("</span>")){
-						duration = duration.substring(0, duration.indexOf("</span>"));
-						//and cut out just the time.
-						int index = duration.lastIndexOf('>');
-						if(index == -1){
-							break;
-						}
-						duration = duration.substring(index + 1); //should have the final string now.
-						if(duration.length() > 12){ //This is a final sanity check
-							break;
-						}
-						return duration;
-					}
-				}catch(Exception e){
-					e.printStackTrace();
-				}
-				break; //in case we fell through
-			}
-		}
-		return "";
 	}
 	
 	ArrayList<String> parseFeed(){
 		Log.v(TAG, "Parsing feed.");
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		String lastPostedVideoId = prefs.getString(LAST_VIDEO_ID, "");
+		String lastPostedTweetLink = prefs.getString(LAST_TWEET_LINK, "");
 		
 		try{
 			SyndFeedInput input = new SyndFeedInput();
 			SyndFeed feed = input.build(new XmlReader(new URL(feedUrl)));
-			Log.v(TAG, "Feed contains " + feed.getEntries().size() + " items. Last Vid ID=" + lastPostedVideoId);
+			Log.v(TAG, "Feed contains " + feed.getEntries().size() + " items. Last Tweet link = " + lastPostedTweetLink);
+
+            //This list will hold all of the IDs in the RSS stream, which we will then iterate to deliver. We have to do two iterations to make
+            //sure we don't re-deliver movies and such.
+            ArrayList<Tweet> tweets = new ArrayList<Tweet>();
+            List entries = feed.getEntries();
+            Iterator iteratorEntries = entries.iterator();
+            while (iteratorEntries.hasNext()) {
+                SyndEntry entry = (SyndEntry)iteratorEntries.next();
+                String title = entry.getTitle(); //this will be the tweet
+                Log.v(TAG, "Tweet: " + title);
+            }
+
+            while (iteratorEntries.hasNext()) {
+                SyndEntry entry = (SyndEntry)iteratorEntries.next();
+                String title = entry.getTitle(); //this will be the tweet
+                String link = entry.getLink(); //this will be something like twitter.com/BioscanR/statuses/383692371486973952
+                if(lastPostedTweetLink != null && lastPostedTweetLink.equals(link)){
+                    break; //we've hit the point in the feed where we already were at, don't repost cards.
+                }
+                tweets.add(new Tweet(link, title));
+            }
+
+			Log.v(TAG, "Only " + tweets.size() + " are new tweets.");
 			
-			//This list will hold all of the IDs in the RSS stream, which we will then iterate to deliver. We have to do two iterations to make
-			//sure we don't re-deliver movies and such.
-			ArrayList<VideoInfo> vids = new ArrayList<VideoInfo>();
-			Iterator entries = feed.getEntries().iterator();
-			while(entries.hasNext()){
-				SyndEntry entry = (SyndEntry)entries.next();
-				String link = entry.getLink(); //this will be something like youtube.com/watch?v=<id>&featuer=blahblahblah, we just want the id
-				String id = link.substring(link.indexOf("watch?v=") + 8);
-				if(id.contains("&")){
-					id = id.substring(0, id.indexOf("&"));
-				}
-				if(lastPostedVideoId != null && lastPostedVideoId.equals(id)){
-					break; //we've hit the point in the feed where we already were at, don't repost cards.
-				}
-				vids.add(new VideoInfo(id, entry.getTitle(), fetchVideoDurationFromContents(entry.getContents())));		
-			}
-			Log.v(TAG, "Only " + vids.size() + " are new videos.");
-			
-			//Last but not least, make sure we save the latest video we received back into the shared prefs.
-			if(vids.size() > 0){
-				//Push the videos to the timeline
-				pushCards(vids);
-				//Save the newest card as the latest read video.
-				VideoInfo latestVid = vids.get(0);
+			//Last but not least, make sure we save the latest tweet we received back into the shared prefs.
+			if(tweets.size() > 0){
+				//Push the tweets to the timeline
+				pushCards(tweets);
+				//Save the newest card as the latest read tweet.
+				Tweet latestTweet = tweets.get(0);
 				SharedPreferences.Editor ed = prefs.edit();
-				ed.putString(LAST_VIDEO_ID, latestVid.id);
+				ed.putString(LAST_TWEET_LINK, latestTweet.link);
 				ed.commit();
-				Log.v(TAG, "Saving last read video id: " + latestVid.id);
+				Log.v(TAG, "Saving last read tweet link: " + latestTweet.link);
 			}
 		}catch(Exception rss){
 			Log.v(TAG, "Failed to fetch feed.");
@@ -281,10 +252,9 @@ public class YoutubeFeedService extends Service{
 		return null;
 	}
 	
-	String HTML_B4_IMG = "<article class=\"photo\">\n  <img src=\"";
-	String HTML_B4_TXT = "\" width=\"100%\" height=\"100%\">\n  <div class=\"photo-overlay\"></div><section><p class=\"text-auto-size\">";
+	String HTML_B4_TXT = "<article class=\"auto-paginate\"><section><p class=\"text-auto-size\">";
 	String HTML_FOOT = "</p></section></article>";
-	void pushCards(ArrayList<VideoInfo> vidInfos){
+	void pushCards(ArrayList<Tweet> tweets){
     	ContentResolver cr = getContentResolver();
     	//For some reason an TimelineHelper instance is required to call some methods.
     	final TimelineHelper tlHelper = new TimelineHelper();
@@ -292,24 +262,22 @@ public class YoutubeFeedService extends Service{
     	String bundleId = UUID.randomUUID().toString();
     	ArrayList<TimelineItem> cards = new ArrayList<TimelineItem>();
     	
-    	//Iterate through all of the new videos coming in and add them to the same bundle. We are iterating in reverse so that
-    	//the newest video gets pushed to the top of the stack.
-		ListIterator<VideoInfo> iter = vidInfos.listIterator(vidInfos.size());
+    	//Iterate through all of the new tweets coming in and add them to the same bundle. We are iterating in reverse so that
+    	//the newest tweet gets pushed to the top of the stack.
+		ListIterator<Tweet> iter = tweets.listIterator(tweets.size());
     	boolean firstCard = true;
     	while(iter.hasPrevious()){
-    		VideoInfo vidInfo = iter.previous();
-    		Log.v(TAG, "YoutubeFeed: pushing a card for " + vidInfo.id);
+    		Tweet tweet = iter.previous();
+    		Log.v(TAG, "BarcampFeed: pushing a card for " + tweet.link);
         	TimelineItem.Builder ntib = tlHelper.createTimelineItemBuilder(me, new SettingsSecure(cr));
-        	ntib.setTitle("YouTube Feed");
-        	//add the 'view video' option - only works if you have 
-        	ntib.addMenuItem(MenuItem.newBuilder().setAction(MenuItem.Action.VIEW_WEB_SITE).setId(UUID.randomUUID().toString())
-        										  .addValue(MenuValue.newBuilder().setDisplayName("View Video").build()).build());
+        	ntib.setTitle("BarCamp Feed");
+            //add the share menu option
+            ntib.addMenuItem(MenuItem.newBuilder().setAction(MenuItem.Action.SHARE).setId(UUID.randomUUID().toString()).build());
         	//add the delete menu option
         	ntib.addMenuItem(MenuItem.newBuilder().setAction(MenuItem.Action.DELETE).setId(UUID.randomUUID().toString()).build());
-        	ntib.setSendToPhoneUrl("https://www.youtube.com/watch?v=" + vidInfo.id);
-        	ntib.setText(vidInfo.title + " (" + vidInfo.duration + ")");
-        	String html = HTML_B4_IMG + "http://img.youtube.com/vi/" + vidInfo.id + "/hqdefault.jpg" + 
-        				  HTML_B4_TXT + ntib.getText() + HTML_FOOT;
+        	ntib.setSendToPhoneUrl(tweet.link);
+        	ntib.setText(tweet.title);
+        	String html = HTML_B4_TXT + ntib.getText() + HTML_FOOT;
         	ntib.setHtml(html);
         	ntib.setBundleId(bundleId);
         	if(firstCard){

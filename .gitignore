@@ -1,1 +1,8 @@
 bin/*
+out/*
+gen/*
+.barcampfeedconfig
+.idea/*
+barcampfeed.iml
+barcampfeed.xml
+barcampfeed*.properties
