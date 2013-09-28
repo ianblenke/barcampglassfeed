@@ -1,16 +1,16 @@
-You will need to install this application using adb. Before you do that, though,
-I recommend you edit and push the .barcampconfig file to the /sdcard directory on your
-device. Open the file in a standard text editor and follow the directions to set up which
-barcamp feed your Glass will follow and how often it will check for updates. You can
-push the config file to your device with the following command:
+This is a repurposing of James Betker's youtubeglassfeed project for an RSS feed
+(for this project, an RSS Twitter feed for #BCTPA)
+
+https://github.com/neonglass/youtubeglassfeed
+
+You probably want to install that wonderful glass app as well. I love it.
+
+For any other RSS feed, you can make your own .barcampfeedconfig and copy it up to your sdcard:
 
 adb push .barcampfeedconfig sdcard/
 
-Also, to get the most of the app, you will need to sideload in the default Android
-YouTube app. Until you do this, videos will appear in your timeline but you will be
-unable to watch them. You can get this package by scraping it from your android phone
-or you can download it here:
-http://www.androidfilehost.com/?fid=22962010882834650
+The contents of which are the same as .youtubeglassconfig from youtubeglassfeed:
 
-You can fetch the binary for this app here:
-http://www.androidfilehost.com/?fid=22962010882834651
+barcampFeed={url to any RSS feed}
+queryInterval=10
+
